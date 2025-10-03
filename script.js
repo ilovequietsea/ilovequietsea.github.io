@@ -1,13 +1,379 @@
+// ==================== 背景设置 ====================
+const BG_PRESETS = {
+    gradient1: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    gradient2: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    gradient3: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    gradient4: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    gradient5: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    solid: '#2c3e50'
+};
+
+let currentBgImage = null;
+let currentPage = 'mode'; // 当前页面：mode, single, batch, text
+const DEFAULT_MODE_ICONS = {
+    single: '📷',
+    batch: '🖼️',
+    text: '📝'
+};
+
+// 页面加载时恢复设置
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+    initPresetButtons();
+    initBgImageUpload();
+    initOpacitySlider();
+    initPageSelector();
+    initModeIconUpload();
+    loadModeIcons();
+});
+
+function loadSettings() {
+    const allSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+
+    // 加载全局设置
+    loadPageSettings('all', allSettings);
+
+    // 加载当前页面设置
+    loadPageSettings(currentPage, allSettings);
+}
+
+function loadPageSettings(page, allSettings = null) {
+    if (!allSettings) {
+        allSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    }
+
+    const settings = allSettings[page] || {};
+
+    // 恢复背景
+    if (settings.bgType === 'preset' && settings.bgValue) {
+        applyPresetBackground(settings.bgValue);
+    } else if (settings.bgType === 'color' && settings.bgValue) {
+        applyBackground(settings.bgValue);
+    } else if (settings.bgType === 'image' && settings.bgImage) {
+        currentBgImage = settings.bgImage;
+        applyBgImage(settings.bgImage);
+    }
+
+    // 恢复透明度
+    if (settings.opacity) {
+        const opacity = settings.opacity;
+        document.getElementById('opacitySlider').value = opacity;
+        document.getElementById('opacityValue').textContent = opacity;
+        applyOpacity(opacity);
+    }
+
+    // 恢复字体和文字颜色
+    if (settings.fontFamily) {
+        applyFont(settings.fontFamily);
+        document.getElementById('fontSelector').value = settings.fontFamily;
+    }
+    if (settings.textColor) {
+        applyTextColor(settings.textColor);
+        document.getElementById('textColorPicker').value = settings.textColor;
+    }
+}
+
+function saveSettings(type, value, bgImage = null) {
+    const allSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    const selectedPage = document.getElementById('pageSelector').value;
+
+    if (!allSettings[selectedPage]) {
+        allSettings[selectedPage] = {};
+    }
+
+    allSettings[selectedPage].bgType = type;
+    allSettings[selectedPage].bgValue = value;
+    allSettings[selectedPage].bgImage = bgImage || currentBgImage;
+    allSettings[selectedPage].opacity = document.getElementById('opacitySlider').value;
+    allSettings[selectedPage].fontFamily = document.getElementById('fontSelector').value;
+    allSettings[selectedPage].textColor = document.getElementById('textColorPicker').value;
+
+    localStorage.setItem('appSettings', JSON.stringify(allSettings));
+}
+
+function initPageSelector() {
+    const selector = document.getElementById('pageSelector');
+    selector.addEventListener('change', function() {
+        const allSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+        const selectedPage = this.value;
+        loadPageSettings(selectedPage, allSettings);
+    });
+}
+
+function openSettings() {
+    document.getElementById('settingsPanel').classList.add('active');
+}
+
+function closeSettings() {
+    document.getElementById('settingsPanel').classList.remove('active');
+}
+
+// 点击背景关闭设置面板
+document.getElementById('settingsPanel')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSettings();
+    }
+});
+
+function initPresetButtons() {
+    const buttons = document.querySelectorAll('.preset-bg');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const type = this.getAttribute('data-type');
+            applyPresetBackground(type);
+
+            // 更新按钮状态
+            buttons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            saveSettings('preset', type);
+        });
+    });
+}
+
+function applyPresetBackground(type) {
+    const bg = BG_PRESETS[type];
+    applyBackground(bg);
+
+    // 移除图片背景
+    document.body.classList.remove('has-bg-image');
+    if (document.body.style.backgroundImage) {
+        document.body.style.backgroundImage = '';
+    }
+}
+
+function applyCustomColor() {
+    const color = document.getElementById('bgColorPicker').value;
+    applyBackground(color);
+
+    // 移除图片背景
+    document.body.classList.remove('has-bg-image');
+    if (document.body.style.backgroundImage) {
+        document.body.style.backgroundImage = '';
+    }
+
+    // 清除预设按钮的选中状态
+    document.querySelectorAll('.preset-bg').forEach(b => b.classList.remove('active'));
+
+    saveSettings('color', color);
+}
+
+function applyBackground(bg) {
+    document.body.style.background = bg;
+}
+
+function initBgImageUpload() {
+    const input = document.getElementById('bgImageInput');
+    input.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const imageData = event.target.result;
+            currentBgImage = imageData;
+            applyBgImage(imageData);
+
+            // 显示预览
+            const preview = document.getElementById('bgImagePreview');
+            preview.style.backgroundImage = `url(${imageData})`;
+            preview.classList.add('active');
+
+            // 清除预设按钮的选中状态
+            document.querySelectorAll('.preset-bg').forEach(b => b.classList.remove('active'));
+
+            saveSettings('image', null, imageData);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function applyBgImage(imageData) {
+    document.body.classList.add('has-bg-image');
+    document.body.style.backgroundImage = `url(${imageData})`;
+}
+
+function removeBgImage() {
+    document.body.classList.remove('has-bg-image');
+    document.body.style.backgroundImage = '';
+    currentBgImage = null;
+
+    // 隐藏预览
+    const preview = document.getElementById('bgImagePreview');
+    preview.style.backgroundImage = '';
+    preview.classList.remove('active');
+
+    // 恢复默认背景
+    applyPresetBackground('gradient1');
+    saveSettings('preset', 'gradient1');
+}
+
+function initOpacitySlider() {
+    const slider = document.getElementById('opacitySlider');
+    slider.addEventListener('input', function() {
+        const value = this.value;
+        document.getElementById('opacityValue').textContent = value;
+        applyOpacity(value);
+        saveSettings(
+            localStorage.getItem('appSettings') ? JSON.parse(localStorage.getItem('appSettings')).bgType : 'preset',
+            localStorage.getItem('appSettings') ? JSON.parse(localStorage.getItem('appSettings')).bgValue : 'gradient1'
+        );
+    });
+}
+
+function applyOpacity(value) {
+    const opacity = value / 100;
+    const containers = document.querySelectorAll('.container, .mode-container');
+    containers.forEach(container => {
+        container.style.backgroundColor = `rgba(255, 255, 255, ${opacity})`;
+    });
+}
+
+function applyTextSettings() {
+    const font = document.getElementById('fontSelector').value;
+    const color = document.getElementById('textColorPicker').value;
+
+    applyFont(font);
+    applyTextColor(color);
+
+    saveSettings(
+        localStorage.getItem('appSettings') ? JSON.parse(localStorage.getItem('appSettings'))[document.getElementById('pageSelector').value]?.bgType : 'preset',
+        localStorage.getItem('appSettings') ? JSON.parse(localStorage.getItem('appSettings'))[document.getElementById('pageSelector').value]?.bgValue : 'gradient1'
+    );
+}
+
+function applyFont(fontFamily) {
+    document.body.style.fontFamily = fontFamily;
+}
+
+function applyTextColor(color) {
+    document.body.style.color = color;
+    // 应用到标题和文字
+    const elements = document.querySelectorAll('h1, h2, h3, p, span, label, button, input, select, textarea, div');
+    elements.forEach(el => {
+        if (!el.classList.contains('close-btn') && !el.classList.contains('crop-info-label')) {
+            el.style.color = color;
+        }
+    });
+}
+
+function initModeIconUpload() {
+    const iconInputs = ['singleIconInput', 'batchIconInput', 'textIconInput'];
+    const iconIds = ['single', 'batch', 'text'];
+
+    iconInputs.forEach((inputId, index) => {
+        const input = document.getElementById(inputId);
+        const mode = iconIds[index];
+
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imageData = event.target.result;
+                applyModeIcon(mode, imageData);
+                saveModeIcon(mode, imageData);
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+}
+
+function applyModeIcon(mode, imageData) {
+    const iconElement = document.getElementById(`${mode}ModeIcon`);
+    if (iconElement) {
+        iconElement.style.backgroundImage = `url(${imageData})`;
+        iconElement.classList.add('has-custom-image');
+        iconElement.textContent = '';
+    }
+}
+
+function saveModeIcon(mode, imageData) {
+    const modeIcons = JSON.parse(localStorage.getItem('modeIcons') || '{}');
+    modeIcons[mode] = imageData;
+    localStorage.setItem('modeIcons', JSON.stringify(modeIcons));
+}
+
+function loadModeIcons() {
+    const modeIcons = JSON.parse(localStorage.getItem('modeIcons') || '{}');
+
+    Object.keys(modeIcons).forEach(mode => {
+        if (modeIcons[mode]) {
+            applyModeIcon(mode, modeIcons[mode]);
+        }
+    });
+}
+
+function resetModeIcon(mode) {
+    const iconElement = document.getElementById(`${mode}ModeIcon`);
+    if (iconElement) {
+        iconElement.style.backgroundImage = '';
+        iconElement.classList.remove('has-custom-image');
+        iconElement.textContent = DEFAULT_MODE_ICONS[mode];
+    }
+
+    // 从 localStorage 移除
+    const modeIcons = JSON.parse(localStorage.getItem('modeIcons') || '{}');
+    delete modeIcons[mode];
+    localStorage.setItem('modeIcons', JSON.stringify(modeIcons));
+}
+
+function resetToDefault() {
+    // 清除所有设置
+    localStorage.removeItem('appSettings');
+    localStorage.removeItem('modeIcons');
+    currentBgImage = null;
+
+    // 恢复默认背景
+    applyPresetBackground('gradient1');
+
+    // 恢复默认透明度
+    document.getElementById('opacitySlider').value = 95;
+    document.getElementById('opacityValue').textContent = 95;
+    applyOpacity(95);
+
+    // 恢复默认字体和颜色
+    applyFont("'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+    applyTextColor('#333333');
+    document.getElementById('fontSelector').value = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+    document.getElementById('textColorPicker').value = '#333333';
+
+    // 清除图片预览
+    const preview = document.getElementById('bgImagePreview');
+    preview.style.backgroundImage = '';
+    preview.classList.remove('active');
+
+    // 更新按钮状态
+    document.querySelectorAll('.preset-bg').forEach((b, i) => {
+        b.classList.remove('active');
+        if (i === 0) b.classList.add('active');
+    });
+
+    // 恢复默认模式图标
+    ['single', 'batch', 'text'].forEach(mode => {
+        resetModeIcon(mode);
+    });
+
+    alert('已恢复全部默认设置');
+}
+
 // ==================== 模式切换 ====================
 function selectMode(mode) {
     document.getElementById('modeSelection').style.display = 'none';
     if (mode === 'single') {
+        currentPage = 'single';
         document.getElementById('singleMode').style.display = 'block';
     } else if (mode === 'batch') {
+        currentPage = 'batch';
         document.getElementById('batchUpload').style.display = 'block';
     } else if (mode === 'text') {
+        currentPage = 'text';
         document.getElementById('textUpload').style.display = 'block';
     }
+
+    // 加载对应页面的设置
+    loadPageSettings(currentPage);
 }
 
 function backToModeSelection() {
@@ -17,6 +383,10 @@ function backToModeSelection() {
     document.getElementById('batchEdit').style.display = 'none';
     document.getElementById('textUpload').style.display = 'none';
     document.getElementById('textEdit').style.display = 'none';
+
+    // 切换到模式选择页面
+    currentPage = 'mode';
+    loadPageSettings(currentPage);
 }
 
 function backToBatchUpload() {
@@ -855,6 +1225,20 @@ function renderBatchPage() {
     prevPageBtn.disabled = batchCurrentPage === 1;
     nextPageBtn.disabled = batchCurrentPage === totalPages;
 
+    // 更新页码输入框
+    const pageInput = document.getElementById('batchPageInput');
+    if (pageInput) {
+        pageInput.value = batchCurrentPage;
+        pageInput.max = totalPages;
+
+        // 添加回车键监听（移除旧的监听器避免重复）
+        pageInput.removeEventListener('keypress', batchPageInputKeyPress);
+        pageInput.addEventListener('keypress', batchPageInputKeyPress);
+    }
+
+    // 生成页码按钮
+    renderPageNumbers(batchCurrentPage, totalPages, 'batchPageNumbers', 'goToPageNumber');
+
     updateCheckedCount();
 }
 
@@ -1362,6 +1746,31 @@ function nextPage() {
     }
 }
 
+function jumpToPage() {
+    const pageInput = document.getElementById('batchPageInput');
+    const pageNum = parseInt(pageInput.value);
+    const displayCount = parseInt(displayCountSelect.value);
+    const totalPages = Math.ceil(batchImageData.length / displayCount);
+
+    if (pageNum >= 1 && pageNum <= totalPages) {
+        batchCurrentPage = pageNum;
+        renderBatchPage();
+    } else {
+        alert(`请输入1到${totalPages}之间的页码`);
+    }
+}
+
+function goToPageNumber(pageNum) {
+    batchCurrentPage = pageNum;
+    renderBatchPage();
+}
+
+function batchPageInputKeyPress(e) {
+    if (e.key === 'Enter') {
+        jumpToPage();
+    }
+}
+
 // ==================== 通用工具函数 ====================
 function calculateScale(imgWidth, imgHeight, targetWidth, targetHeight, mode) {
     let scale = 1;
@@ -1389,6 +1798,90 @@ function calculateScale(imgWidth, imgHeight, targetWidth, targetHeight, mode) {
     }
 
     return scale;
+}
+
+// 生成页码按钮
+function renderPageNumbers(currentPage, totalPages, containerId, callbackName) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // 如果总页数小于等于1，不显示页码按钮
+    if (totalPages <= 1) return;
+
+    // 计算要显示的页码范围
+    const maxButtons = 7; // 最多显示7个按钮
+    let startPage, endPage;
+
+    if (totalPages <= maxButtons) {
+        // 页数少，全部显示
+        startPage = 1;
+        endPage = totalPages;
+    } else {
+        // 页数多，智能显示
+        const halfButtons = Math.floor(maxButtons / 2);
+
+        if (currentPage <= halfButtons + 1) {
+            // 靠近开始
+            startPage = 1;
+            endPage = maxButtons - 1;
+        } else if (currentPage >= totalPages - halfButtons) {
+            // 靠近结束
+            startPage = totalPages - maxButtons + 2;
+            endPage = totalPages;
+        } else {
+            // 中间部分
+            startPage = currentPage - halfButtons + 1;
+            endPage = currentPage + halfButtons - 1;
+        }
+    }
+
+    // 添加首页按钮
+    if (startPage > 1) {
+        const firstBtn = createPageButton(1, currentPage, callbackName);
+        container.appendChild(firstBtn);
+
+        if (startPage > 2) {
+            const dots = document.createElement('span');
+            dots.className = 'page-dots';
+            dots.textContent = '...';
+            container.appendChild(dots);
+        }
+    }
+
+    // 添加页码按钮
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = createPageButton(i, currentPage, callbackName);
+        container.appendChild(btn);
+    }
+
+    // 添加尾页按钮
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const dots = document.createElement('span');
+            dots.className = 'page-dots';
+            dots.textContent = '...';
+            container.appendChild(dots);
+        }
+
+        const lastBtn = createPageButton(totalPages, currentPage, callbackName);
+        container.appendChild(lastBtn);
+    }
+}
+
+// 创建页码按钮
+function createPageButton(pageNum, currentPage, callbackName) {
+    const btn = document.createElement('button');
+    btn.className = 'page-number-btn';
+    btn.textContent = pageNum;
+    btn.onclick = () => window[callbackName](pageNum);
+
+    if (pageNum === currentPage) {
+        btn.classList.add('active');
+    }
+
+    return btn;
 }
 
 // ==================== 文本处理模式 - 上传 ====================
@@ -1795,6 +2288,20 @@ function renderTextPage() {
     document.getElementById('prevTextPageBtn').disabled = textCurrentPage === 1;
     document.getElementById('nextTextPageBtn').disabled = textCurrentPage === totalPages;
 
+    // 更新页码输入框
+    const pageInput = document.getElementById('textPageInput');
+    if (pageInput) {
+        pageInput.value = textCurrentPage;
+        pageInput.max = totalPages;
+
+        // 添加回车键监听（移除旧的监听器避免重复）
+        pageInput.removeEventListener('keypress', textPageInputKeyPress);
+        pageInput.addEventListener('keypress', textPageInputKeyPress);
+    }
+
+    // 生成页码按钮
+    renderPageNumbers(textCurrentPage, totalPages, 'textPageNumbers', 'goToTextPageNumber');
+
     updateCheckedTextCount();
 }
 
@@ -2125,5 +2632,30 @@ function nextTextPage() {
     if (textCurrentPage < totalPages) {
         textCurrentPage++;
         renderTextPage();
+    }
+}
+
+function jumpToTextPage() {
+    const pageInput = document.getElementById('textPageInput');
+    const pageNum = parseInt(pageInput.value);
+    const displayCount = parseInt(textDisplayCountSelect.value);
+    const totalPages = Math.ceil(textFileData.length / displayCount);
+
+    if (pageNum >= 1 && pageNum <= totalPages) {
+        textCurrentPage = pageNum;
+        renderTextPage();
+    } else {
+        alert(`请输入1到${totalPages}之间的页码`);
+    }
+}
+
+function goToTextPageNumber(pageNum) {
+    textCurrentPage = pageNum;
+    renderTextPage();
+}
+
+function textPageInputKeyPress(e) {
+    if (e.key === 'Enter') {
+        jumpToTextPage();
     }
 }

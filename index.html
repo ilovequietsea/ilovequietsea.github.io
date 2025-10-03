@@ -8,6 +8,120 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
+    <!-- 设置按钮 -->
+    <button id="settingsBtn" class="settings-btn" onclick="openSettings()" title="设置">⚙️</button>
+
+    <!-- 设置面板 -->
+    <div id="settingsPanel" class="settings-panel">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2>应用设置</h2>
+                <button class="close-btn" onclick="closeSettings()">×</button>
+            </div>
+
+            <div class="settings-body">
+                <div class="setting-section">
+                    <h3>当前页面</h3>
+                    <select id="pageSelector" class="page-selector">
+                        <option value="all">全局设置</option>
+                        <option value="mode">模式选择页面</option>
+                        <option value="single">单张模式页面</option>
+                        <option value="batch">批量模式页面</option>
+                        <option value="text">文本处理页面</option>
+                    </select>
+                </div>
+
+                <div class="setting-section">
+                    <h3>字体设置</h3>
+                    <div class="font-settings">
+                        <div class="setting-group">
+                            <label>字体：</label>
+                            <select id="fontSelector" class="font-selector">
+                                <option value="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">默认字体</option>
+                                <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                                <option value="'SimHei', sans-serif">黑体</option>
+                                <option value="'SimSun', serif">宋体</option>
+                                <option value="'KaiTi', serif">楷体</option>
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Times New Roman', serif">Times New Roman</option>
+                                <option value="'Courier New', monospace">Courier New</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>文字颜色：</label>
+                            <input type="color" id="textColorPicker" value="#333333">
+                        </div>
+                        <button class="btn-small" onclick="applyTextSettings()">应用文字设置</button>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>预设背景</h3>
+                    <div class="preset-backgrounds">
+                        <button class="preset-bg" data-type="gradient1" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)"></button>
+                        <button class="preset-bg" data-type="gradient2" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"></button>
+                        <button class="preset-bg" data-type="gradient3" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"></button>
+                        <button class="preset-bg" data-type="gradient4" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"></button>
+                        <button class="preset-bg" data-type="gradient5" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%)"></button>
+                        <button class="preset-bg" data-type="solid" style="background: #2c3e50"></button>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>自定义颜色</h3>
+                    <div class="color-picker-group">
+                        <input type="color" id="bgColorPicker" value="#667eea">
+                        <button class="btn-small" onclick="applyCustomColor()">应用颜色</button>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>自定义图片背景</h3>
+                    <input type="file" id="bgImageInput" accept="image/*" style="display: none;">
+                    <button class="btn-small" onclick="document.getElementById('bgImageInput').click()">选择图片</button>
+                    <button class="btn-small btn-delete" onclick="removeBgImage()">移除图片</button>
+                    <div id="bgImagePreview" class="bg-image-preview"></div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>窗口透明度</h3>
+                    <div class="opacity-control">
+                        <label>操作窗口不透明度：<span id="opacityValue">95</span>%</label>
+                        <input type="range" id="opacitySlider" min="70" max="100" value="95" step="5">
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>自定义模式图标</h3>
+                    <div class="mode-icon-settings">
+                        <div class="mode-icon-item">
+                            <span>单张模式：</span>
+                            <input type="file" id="singleIconInput" accept="image/*" style="display: none;">
+                            <button class="btn-small" onclick="document.getElementById('singleIconInput').click()">选择图标</button>
+                            <button class="btn-small btn-delete" onclick="resetModeIcon('single')">重置</button>
+                        </div>
+                        <div class="mode-icon-item">
+                            <span>批量模式：</span>
+                            <input type="file" id="batchIconInput" accept="image/*" style="display: none;">
+                            <button class="btn-small" onclick="document.getElementById('batchIconInput').click()">选择图标</button>
+                            <button class="btn-small btn-delete" onclick="resetModeIcon('batch')">重置</button>
+                        </div>
+                        <div class="mode-icon-item">
+                            <span>文本模式：</span>
+                            <input type="file" id="textIconInput" accept="image/*" style="display: none;">
+                            <button class="btn-small" onclick="document.getElementById('textIconInput').click()">选择图标</button>
+                            <button class="btn-small btn-delete" onclick="resetModeIcon('text')">重置</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <button class="btn-small" onclick="resetToDefault()">恢复全部默认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 模式选择界面 -->
     <div id="modeSelection" class="mode-selection">
         <div class="mode-container">
@@ -15,19 +129,25 @@
             <p class="mode-subtitle">请选择工作模式</p>
             <div class="mode-cards">
                 <div class="mode-card" onclick="selectMode('single')">
-                    <div class="mode-icon">📷</div>
-                    <h2>单张模式</h2>
-                    <p>处理单张图片，精确调整裁剪位置</p>
+                    <div class="mode-icon" id="singleModeIcon">📷</div>
+                    <div class="mode-text-box">
+                        <h2>单张模式</h2>
+                        <p>处理单张图片，精确调整裁剪位置</p>
+                    </div>
                 </div>
                 <div class="mode-card" onclick="selectMode('batch')">
-                    <div class="mode-icon">🖼️</div>
-                    <h2>批量模式</h2>
-                    <p>同时处理多张图片，提高工作效率</p>
+                    <div class="mode-icon" id="batchModeIcon">🖼️</div>
+                    <div class="mode-text-box">
+                        <h2>批量模式</h2>
+                        <p>同时处理多张图片，提高工作效率</p>
+                    </div>
                 </div>
                 <div class="mode-card" onclick="selectMode('text')">
-                    <div class="mode-icon">📝</div>
-                    <h2>文本处理模式</h2>
-                    <p>批量处理文本文件，添加内容到开头或结尾</p>
+                    <div class="mode-icon" id="textModeIcon">📝</div>
+                    <div class="mode-text-box">
+                        <h2>文本处理模式</h2>
+                        <p>批量处理文本文件，添加内容到开头或结尾</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -210,6 +330,12 @@
                     <button onclick="prevPage()" id="prevPageBtn">← 上一页</button>
                     <span id="pageInfo">第 1 页 / 共 1 页</span>
                     <button onclick="nextPage()" id="nextPageBtn">下一页 →</button>
+                    <div class="page-jumper">
+                        <span>跳转至</span>
+                        <input type="number" id="batchPageInput" min="1" value="1" class="page-input">
+                        <button onclick="jumpToPage()" class="btn-small">跳转</button>
+                    </div>
+                    <div id="batchPageNumbers" class="page-numbers"></div>
                 </div>
             </div>
 
@@ -318,6 +444,12 @@
                     <button onclick="prevTextPage()" id="prevTextPageBtn">← 上一页</button>
                     <span id="textPageInfo">第 1 页 / 共 1 页</span>
                     <button onclick="nextTextPage()" id="nextTextPageBtn">下一页 →</button>
+                    <div class="page-jumper">
+                        <span>跳转至</span>
+                        <input type="number" id="textPageInput" min="1" value="1" class="page-input">
+                        <button onclick="jumpToTextPage()" class="btn-small">跳转</button>
+                    </div>
+                    <div id="textPageNumbers" class="page-numbers"></div>
                 </div>
             </div>
 
