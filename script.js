@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initPageSelector();
     initModeIconUpload();
     loadModeIcons();
+
+    // 如果没有默认设置，自动保存当前设置为默认
+    initializeDefaultSettings();
 });
 
 function loadSettings() {
@@ -319,43 +322,107 @@ function resetModeIcon(mode) {
     localStorage.setItem('modeIcons', JSON.stringify(modeIcons));
 }
 
+// 初始化默认设置（如果不存在，保存当前设置为默认）
+function initializeDefaultSettings() {
+    const hasDefaultSettings = localStorage.getItem('defaultAppSettings') !== null;
+
+    if (!hasDefaultSettings) {
+        // 自动保存当前设置为默认设置
+        saveCurrentAsDefault();
+    }
+}
+
+// 保存当前设置为默认设置
+function saveCurrentAsDefault() {
+    // 保存应用设置
+    const currentAppSettings = localStorage.getItem('appSettings');
+    if (currentAppSettings) {
+        localStorage.setItem('defaultAppSettings', currentAppSettings);
+    }
+
+    // 保存模式图标
+    const currentModeIcons = localStorage.getItem('modeIcons');
+    if (currentModeIcons) {
+        localStorage.setItem('defaultModeIcons', currentModeIcons);
+    }
+
+    console.log('当前设置已保存为默认设置');
+}
+
+// 更新默认设置
+function updateDefaultSettings() {
+    saveCurrentAsDefault();
+    alert('已将当前设置更新为默认设置');
+}
+
+// 恢复到用户自定义的默认设置
 function resetToDefault() {
-    // 清除所有设置
-    localStorage.removeItem('appSettings');
-    localStorage.removeItem('modeIcons');
-    currentBgImage = null;
+    // 获取用户保存的默认设置
+    const defaultAppSettings = localStorage.getItem('defaultAppSettings');
+    const defaultModeIcons = localStorage.getItem('defaultModeIcons');
 
-    // 恢复默认背景
-    applyPresetBackground('gradient1');
+    if (defaultAppSettings) {
+        // 恢复应用设置
+        localStorage.setItem('appSettings', defaultAppSettings);
+        const allSettings = JSON.parse(defaultAppSettings);
 
-    // 恢复默认透明度
-    document.getElementById('opacitySlider').value = 95;
-    document.getElementById('opacityValue').textContent = 95;
-    applyOpacity(95);
+        // 恢复当前页面的设置
+        const selectedPage = document.getElementById('pageSelector').value;
+        loadPageSettings(selectedPage, allSettings);
 
-    // 恢复默认字体和颜色
-    applyFont("'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
-    applyTextColor('#333333');
-    document.getElementById('fontSelector').value = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
-    document.getElementById('textColorPicker').value = '#333333';
+        // 更新设置面板UI
+        updateSettingsPanelUI(allSettings[selectedPage] || {});
+    }
 
-    // 清除图片预览
+    if (defaultModeIcons) {
+        // 恢复模式图标
+        localStorage.setItem('modeIcons', defaultModeIcons);
+        loadModeIcons();
+    }
+
+    alert('已恢复到您的默认设置');
+}
+
+// 更新设置面板的UI显示
+function updateSettingsPanelUI(settings) {
+    // 更新透明度滑块
+    if (settings.opacity) {
+        document.getElementById('opacitySlider').value = settings.opacity;
+        document.getElementById('opacityValue').textContent = settings.opacity;
+    }
+
+    // 更新字体选择器
+    if (settings.fontFamily) {
+        document.getElementById('fontSelector').value = settings.fontFamily;
+    }
+
+    // 更新文字颜色选择器
+    if (settings.textColor) {
+        document.getElementById('textColorPicker').value = settings.textColor;
+    }
+
+    // 更新背景颜色选择器
+    if (settings.bgType === 'color' && settings.bgValue) {
+        document.getElementById('bgColorPicker').value = settings.bgValue;
+    }
+
+    // 更新背景图片预览
     const preview = document.getElementById('bgImagePreview');
-    preview.style.backgroundImage = '';
-    preview.classList.remove('active');
+    if (settings.bgType === 'image' && settings.bgImage) {
+        preview.style.backgroundImage = `url(${settings.bgImage})`;
+        preview.classList.add('active');
+    } else {
+        preview.style.backgroundImage = '';
+        preview.classList.remove('active');
+    }
 
-    // 更新按钮状态
-    document.querySelectorAll('.preset-bg').forEach((b, i) => {
-        b.classList.remove('active');
-        if (i === 0) b.classList.add('active');
+    // 更新预设背景按钮状态
+    document.querySelectorAll('.preset-bg').forEach(btn => {
+        btn.classList.remove('active');
+        if (settings.bgType === 'preset' && btn.getAttribute('data-type') === settings.bgValue) {
+            btn.classList.add('active');
+        }
     });
-
-    // 恢复默认模式图标
-    ['single', 'batch', 'text'].forEach(mode => {
-        resetModeIcon(mode);
-    });
-
-    alert('已恢复全部默认设置');
 }
 
 // ==================== 模式切换 ====================

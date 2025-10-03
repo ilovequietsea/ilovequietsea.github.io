@@ -1410,3 +1410,15 @@ body.has-bg-image::before {
     font-size: 14px;
     color: #555;
 }
+
+/* ========== 默认设置按钮 ========== */
+.default-settings-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.default-settings-buttons .btn-small {
+    flex: 1;
+    max-width: 200px;
+}
