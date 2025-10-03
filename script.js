@@ -326,15 +326,16 @@ function toggleSelectAllSingle() {
     });
 }
 
-function downloadSelectedSingle() {
+async function downloadSelectedSingle() {
     const selectedItems = previewList.querySelectorAll('.preview-item.selected');
     if (selectedItems.length === 0) {
         alert('请先选择要下载的图片');
         return;
     }
 
-    selectedItems.forEach(item => {
-        const id = parseInt(item.dataset.id);
+    // 单个图片直接下载
+    if (selectedItems.length === 1) {
+        const id = parseInt(selectedItems[0].dataset.id);
         const preview = singlePreviews.find(p => p.id === id);
         if (preview) {
             preview.canvas.toBlob(function(blob) {
@@ -348,7 +349,52 @@ function downloadSelectedSingle() {
                 URL.revokeObjectURL(url);
             }, 'image/png');
         }
+        return;
+    }
+
+    // 多个图片打包成ZIP
+    const zip = new JSZip();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const imgFolder = zip.folder('cropped_images');
+
+    // 收集所有图片的Blob Promise
+    const blobPromises = [];
+    selectedItems.forEach(item => {
+        const id = parseInt(item.dataset.id);
+        const preview = singlePreviews.find(p => p.id === id);
+        if (preview) {
+            const promise = new Promise((resolve) => {
+                preview.canvas.toBlob(function(blob) {
+                    const fileName = `cropped_${preview.width}x${preview.height}_${preview.id}.png`;
+                    resolve({ name: fileName, blob: blob });
+                }, 'image/png');
+            });
+            blobPromises.push(promise);
+        }
     });
+
+    try {
+        // 等待所有图片转换完成
+        const blobs = await Promise.all(blobPromises);
+
+        // 添加到ZIP
+        blobs.forEach(item => {
+            imgFolder.file(item.name, item.blob);
+        });
+
+        // 生成ZIP文件并下载
+        const content = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cropped_images_${timestamp}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        alert('打包下载失败：' + error.message);
+    }
 }
 
 function resetSingleMode() {
@@ -1166,15 +1212,16 @@ function toggleSelectAllBatchPreview() {
     });
 }
 
-function downloadSelectedBatch() {
+async function downloadSelectedBatch() {
     const selectedItems = batchPreviewList.querySelectorAll('.preview-item.selected');
     if (selectedItems.length === 0) {
         alert('请先选择要下载的图片');
         return;
     }
 
-    selectedItems.forEach(item => {
-        const id = parseInt(item.dataset.id);
+    // 单个图片直接下载
+    if (selectedItems.length === 1) {
+        const id = parseInt(selectedItems[0].dataset.id);
         const preview = batchPreviews.find(p => p.id === id);
         if (preview) {
             preview.canvas.toBlob(function(blob) {
@@ -1189,7 +1236,53 @@ function downloadSelectedBatch() {
                 URL.revokeObjectURL(url);
             }, 'image/png');
         }
+        return;
+    }
+
+    // 多个图片打包成ZIP
+    const zip = new JSZip();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const imgFolder = zip.folder('cropped_images');
+
+    // 收集所有图片的Blob Promise
+    const blobPromises = [];
+    selectedItems.forEach(item => {
+        const id = parseInt(item.dataset.id);
+        const preview = batchPreviews.find(p => p.id === id);
+        if (preview) {
+            const promise = new Promise((resolve) => {
+                preview.canvas.toBlob(function(blob) {
+                    const fileName = preview.name.replace(/\.[^/.]+$/, '');
+                    const finalName = `${fileName}_cropped_${preview.width}x${preview.height}.png`;
+                    resolve({ name: finalName, blob: blob });
+                }, 'image/png');
+            });
+            blobPromises.push(promise);
+        }
     });
+
+    try {
+        // 等待所有图片转换完成
+        const blobs = await Promise.all(blobPromises);
+
+        // 添加到ZIP
+        blobs.forEach(item => {
+            imgFolder.file(item.name, item.blob);
+        });
+
+        // 生成ZIP文件并下载
+        const content = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cropped_images_${timestamp}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        alert('打包下载失败：' + error.message);
+    }
 }
 
 function deleteSelectedBatchPreviews() {
@@ -1860,6 +1953,7 @@ function addTextPreview(name, content, position, addedText) {
         } else {
             this.closest('.text-preview-item').classList.remove('selected');
         }
+        updateSelectedPreviewCount();
     });
 
     header.appendChild(title);
@@ -1894,6 +1988,16 @@ function addTextPreview(name, content, position, addedText) {
     textSelectAllPreviewBtn.disabled = false;
     textDownloadSelectedBtn.disabled = false;
     textDeletePreviewBtn.disabled = false;
+
+    updateSelectedPreviewCount();
+}
+
+function updateSelectedPreviewCount() {
+    const total = textPreviews.length;
+    const selected = textPreviewList.querySelectorAll('.text-preview-item.selected').length;
+
+    document.getElementById('totalPreviews').textContent = total;
+    document.getElementById('selectedPreviews').textContent = selected;
 }
 
 function toggleSelectAllTextPreview() {
@@ -1901,19 +2005,25 @@ function toggleSelectAllTextPreview() {
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
     checkboxes.forEach(cb => {
         cb.checked = !allChecked;
-        cb.dispatchEvent(new Event('change'));
+        if (cb.checked) {
+            cb.closest('.text-preview-item').classList.add('selected');
+        } else {
+            cb.closest('.text-preview-item').classList.remove('selected');
+        }
     });
+    updateSelectedPreviewCount();
 }
 
-function downloadSelectedTexts() {
+async function downloadSelectedTexts() {
     const selectedItems = textPreviewList.querySelectorAll('.text-preview-item.selected');
     if (selectedItems.length === 0) {
         alert('请先选择要下载的文件');
         return;
     }
 
-    selectedItems.forEach(item => {
-        const id = parseInt(item.dataset.id);
+    // 单个文件直接下载
+    if (selectedItems.length === 1) {
+        const id = parseInt(selectedItems[0].dataset.id);
         const preview = textPreviews.find(p => p.id === id);
         if (preview) {
             const blob = new Blob([preview.content], { type: 'text/plain;charset=utf-8' });
@@ -1926,7 +2036,35 @@ function downloadSelectedTexts() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
+        return;
+    }
+
+    // 多个文件打包成ZIP
+    const zip = new JSZip();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+
+    selectedItems.forEach(item => {
+        const id = parseInt(item.dataset.id);
+        const preview = textPreviews.find(p => p.id === id);
+        if (preview) {
+            zip.file(preview.name, preview.content);
+        }
     });
+
+    // 生成ZIP文件并下载
+    try {
+        const content = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `text_files_${timestamp}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        alert('打包下载失败：' + error.message);
+    }
 }
 
 function deleteSelectedTextPreviews() {
@@ -1950,6 +2088,8 @@ function deleteSelectedTextPreviews() {
         textDownloadSelectedBtn.disabled = true;
         textDeletePreviewBtn.disabled = true;
     }
+
+    updateSelectedPreviewCount();
 }
 
 function prevTextPage() {

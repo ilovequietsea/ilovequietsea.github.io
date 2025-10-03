@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>图片裁剪工具</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <!-- 模式选择界面 -->
@@ -321,7 +322,7 @@
             <div class="resizer" id="textResizer"></div>
 
             <div class="right-section">
-                <h3>处理预览</h3>
+                <h3>处理预览 (共 <span id="totalPreviews">0</span> 个 | 已选 <span id="selectedPreviews">0</span> 个)</h3>
                 <div class="preview-list" id="textPreviewList">
                     <p class="empty-hint">暂无预览，请先处理文件</p>
                 </div>
