@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片裁剪工具</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 模式选择界面 -->
+    <div id="modeSelection" class="mode-selection">
+        <div class="mode-container">
+            <h1>图片裁剪工具</h1>
+            <p class="mode-subtitle">请选择工作模式</p>
+            <div class="mode-cards">
+                <div class="mode-card" onclick="selectMode('single')">
+                    <div class="mode-icon">📷</div>
+                    <h2>单张模式</h2>
+                    <p>处理单张图片，精确调整裁剪位置</p>
+                </div>
+                <div class="mode-card" onclick="selectMode('batch')">
+                    <div class="mode-icon">🖼️</div>
+                    <h2>批量模式</h2>
+                    <p>同时处理多张图片，提高工作效率</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 单张模式界面 -->
+    <div id="singleMode" class="container" style="display: none;">
+        <div class="header-bar">
+            <h1>图片裁剪工具 - 单张模式</h1>
+            <button class="back-btn" onclick="backToModeSelection()">← 返回</button>
+        </div>
+
+        <div class="upload-section">
+            <input type="file" id="imageInput" accept="image/png, image/jpeg, image/jpg, image/webp">
+            <label for="imageInput" class="upload-btn">选择图片</label>
+        </div>
+
+        <div class="settings-section">
+            <div class="setting-group">
+                <label>目标宽度：</label>
+                <input type="number" id="targetWidth" value="1024" min="1">
+            </div>
+            <div class="setting-group">
+                <label>目标高度：</label>
+                <input type="number" id="targetHeight" value="1024" min="1">
+            </div>
+            <div class="setting-group">
+                <label>缩放模式：</label>
+                <select id="scaleMode">
+                    <option value="short">基于短边缩放</option>
+                    <option value="long">基于长边缩放</option>
+                    <option value="width">基于宽度缩放</option>
+                    <option value="height">基于高度缩放</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="main-section">
+            <div class="left-section">
+                <div class="canvas-wrapper">
+                    <div class="canvas-container" id="canvasContainer">
+                        <canvas id="canvas"></canvas>
+                        <div id="overlayTop" class="overlay-mask"></div>
+                        <div id="overlayBottom" class="overlay-mask"></div>
+                        <div id="overlayLeft" class="overlay-mask"></div>
+                        <div id="overlayRight" class="overlay-mask"></div>
+                        <div id="cropBox" class="crop-box">
+                            <div class="crop-info-label" id="cropLabel"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <p id="originalSize">原始尺寸: -</p>
+                    <p id="scaledSize">缩放后尺寸: -</p>
+                    <p id="cropInfo">裁剪位置: -</p>
+                </div>
+
+                <div class="controls-section">
+                    <button id="processBtn" class="btn" disabled>生成预览</button>
+                </div>
+            </div>
+
+            <div class="right-section">
+                <h3>裁剪预览</h3>
+                <div class="preview-list" id="previewList">
+                    <p class="empty-hint">暂无预览，请先处理图片</p>
+                </div>
+                <div class="download-section">
+                    <button id="selectAllBtn" class="btn-small" disabled>全选</button>
+                    <button id="downloadSelectedBtn" class="btn" disabled>下载选中项</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量模式 - 上传界面 -->
+    <div id="batchUpload" class="container" style="display: none;">
+        <div class="header-bar">
+            <h1>批量模式 - 上传图片</h1>
+            <button class="back-btn" onclick="backToModeSelection()">← 返回</button>
+        </div>
+
+        <div class="batch-upload-area">
+            <input type="file" id="batchImageInput" accept="image/png, image/jpeg, image/jpg, image/webp" multiple>
+            <label for="batchImageInput" class="batch-upload-label">
+                <div class="upload-icon">📁</div>
+                <p>点击选择或拖拽图片到此处</p>
+                <p class="upload-hint">支持 PNG、JPG、WEBP 格式，可一次选择多张</p>
+            </label>
+        </div>
+
+        <div id="uploadedImages" class="uploaded-images" style="display: none;">
+            <div class="uploaded-header">
+                <h3>已上传图片 (<span id="uploadedCount">0</span>)</h3>
+                <div class="uploaded-actions">
+                    <button class="btn-small" onclick="selectAllUploaded()">全选</button>
+                    <button class="btn-small" onclick="invertSelectionUploaded()">反选</button>
+                    <button class="btn-small" onclick="deselectAllUploaded()">取消全选</button>
+                    <button class="btn" onclick="proceedToEdit()">进入编辑 (<span id="selectedCount">0</span>)</button>
+                </div>
+            </div>
+            <div id="uploadedGrid" class="uploaded-grid"></div>
+        </div>
+    </div>
+
+    <!-- 批量模式 - 编辑界面 -->
+    <div id="batchEdit" class="container batch-edit-container" style="display: none;">
+        <div class="header-bar">
+            <h1>批量模式 - 编辑裁剪</h1>
+            <button class="back-btn" onclick="backToBatchUpload()">← 返回上传</button>
+        </div>
+
+        <div class="settings-section">
+            <div class="setting-group">
+                <label>目标宽度：</label>
+                <input type="number" id="batchTargetWidth" value="1024" min="1">
+            </div>
+            <div class="setting-group">
+                <label>目标高度：</label>
+                <input type="number" id="batchTargetHeight" value="1024" min="1">
+            </div>
+            <div class="setting-group">
+                <label>缩放模式：</label>
+                <select id="batchScaleMode">
+                    <option value="short">基于短边缩放</option>
+                    <option value="long">基于长边缩放</option>
+                    <option value="width">基于宽度缩放</option>
+                    <option value="height">基于高度缩放</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>显示数量：</label>
+                <select id="displayCount">
+                    <option value="5">5张</option>
+                    <option value="10">10张</option>
+                    <option value="20">20张</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>布局模式：</label>
+                <select id="layoutMode">
+                    <option value="grid">网格布局</option>
+                    <option value="vertical">垂直布局</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>统一裁剪：</label>
+                <button class="btn-small" onclick="applyUniformCrop()">应用到全部</button>
+            </div>
+        </div>
+
+        <div class="batch-main-section">
+            <div class="batch-left-section">
+                <div class="batch-toolbar">
+                    <div class="batch-info">
+                        <span>共 <strong id="totalImages">0</strong> 张</span>
+                        <span>已选 <strong id="checkedImages">0</strong> 张</span>
+                    </div>
+                    <div class="batch-actions">
+                        <button class="btn-small" onclick="batchSelectAll()">全选当前页</button>
+                        <button class="btn" onclick="batchProcessSelected()">生成选中预览</button>
+                    </div>
+                </div>
+
+                <div id="batchCanvasGrid" class="batch-canvas-grid"></div>
+
+                <div id="batchPagination" class="batch-pagination">
+                    <button onclick="prevPage()" id="prevPageBtn">← 上一页</button>
+                    <span id="pageInfo">第 1 页 / 共 1 页</span>
+                    <button onclick="nextPage()" id="nextPageBtn">下一页 →</button>
+                </div>
+            </div>
+
+            <div class="right-section">
+                <h3>裁剪预览</h3>
+                <div class="preview-list" id="batchPreviewList">
+                    <p class="empty-hint">暂无预览，请先处理图片</p>
+                </div>
+                <div class="download-section">
+                    <button id="batchSelectAllPreviewBtn" class="btn-small" disabled>全选</button>
+                    <button id="batchDownloadSelectedBtn" class="btn" disabled>下载选中项</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
