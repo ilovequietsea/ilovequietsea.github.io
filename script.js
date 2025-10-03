@@ -1064,6 +1064,16 @@ function batchSelectAll() {
     });
 }
 
+function batchSelectAllPages() {
+    // 选中所有页面的所有图片（包括当前不在视图中的）
+    batchImageData.forEach(data => {
+        data.checked = true;
+    });
+
+    // 更新当前页面的显示
+    renderBatchPage();
+}
+
 function batchDeleteSelected() {
     const selected = batchImageData.filter(d => d.checked);
     if (selected.length === 0) {
@@ -1844,6 +1854,16 @@ function textSelectAll() {
         cb.checked = true;
         cb.dispatchEvent(new Event('change'));
     });
+}
+
+function textSelectAllPages() {
+    // 选中所有页面的所有文件（包括当前不在视图中的）
+    textFileData.forEach(data => {
+        data.checked = true;
+    });
+
+    // 更新当前页面的显示
+    renderTextPage();
 }
 
 function textDeleteSelected() {
