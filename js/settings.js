@@ -64,12 +64,12 @@ function initPageSelector() {
 }
 
 function openSettings() {
-    document.getElementById('settingsPanel').classList.add('show');
+    document.getElementById('settingsPanel').classList.add('active');
     updateSettingsPanelUI(currentSettings[currentPage] || currentSettings.all || currentSettings);
 }
 
 function closeSettings() {
-    document.getElementById('settingsPanel').classList.remove('show');
+    document.getElementById('settingsPanel').classList.remove('active');
 }
 
 // 更新设置面板 UI
@@ -96,7 +96,7 @@ function updateSettingsPanelUI(settings) {
 
     // 更新字体选择
     if (settings.fontFamily) {
-        const fontSelect = document.getElementById('fontSelect');
+        const fontSelect = document.getElementById('fontSelector');
         if (fontSelect) {
             fontSelect.value = settings.fontFamily;
         }
@@ -114,9 +114,9 @@ function updateSettingsPanelUI(settings) {
 // ==================== 背景预设 ====================
 
 function initPresetButtons() {
-    document.querySelectorAll('.preset-btn').forEach(btn => {
+    document.querySelectorAll('.preset-bg').forEach(btn => {
         btn.addEventListener('click', function() {
-            const presetType = this.dataset.preset;
+            const presetType = this.dataset.type;
             applyPresetBackground(presetType);
             saveSettings('bgType', 'preset');
             saveSettings('bgValue', presetType);
@@ -134,7 +134,7 @@ function applyPresetBackground(type) {
 // ==================== 自定义颜色 ====================
 
 function applyCustomColor() {
-    const color = document.getElementById('colorPicker').value;
+    const color = document.getElementById('bgColorPicker').value;
     applyBackground(color);
     saveSettings('bgType', 'color');
     saveSettings('bgValue', color);
@@ -206,7 +206,7 @@ function applyOpacity(value) {
 // ==================== 文字设置 ====================
 
 function applyTextSettings() {
-    const fontFamily = document.getElementById('fontSelect').value;
+    const fontFamily = document.getElementById('fontSelector').value;
     const textColor = document.getElementById('textColorPicker').value;
 
     applyFont(fontFamily);
@@ -262,10 +262,18 @@ function applyModeIcon(mode, imageData) {
     modeIcons[mode] = imageData;
     const btn = document.querySelector(`[onclick="selectMode('${mode}')"]`);
     if (btn) {
-        const img = btn.querySelector('.mode-icon');
-        if (img) {
-            img.src = imageData;
-            img.style.fontSize = '0';
+        let icon = btn.querySelector('.mode-icon');
+        if (icon) {
+            // 如果是 div 元素，需要转换为 img 元素
+            if (icon.tagName === 'DIV') {
+                const img = document.createElement('img');
+                img.className = 'mode-icon';
+                img.id = icon.id;
+                icon.parentNode.replaceChild(img, icon);
+                icon = img;
+            }
+            icon.src = imageData;
+            icon.style.fontSize = '0';
         }
     }
 }
@@ -284,15 +292,34 @@ function loadModeIcons() {
     });
 }
 
+// 初始化默认模式图标
+function initDefaultModeIcons() {
+    ['single', 'batch', 'text'].forEach(mode => {
+        const defaultIcon = DEFAULT_MODE_ICONS[mode];
+        // 如果是图片路径，应用默认图片
+        if (defaultIcon && defaultIcon.includes('.png')) {
+            applyModeIcon(mode, defaultIcon);
+        }
+    });
+}
+
 function resetModeIcon(mode) {
     delete modeIcons[mode];
-    const btn = document.querySelector(`[onclick="selectMode('${mode}')"]`);
-    if (btn) {
-        const icon = btn.querySelector('.mode-icon');
-        if (icon) {
-            icon.textContent = DEFAULT_MODE_ICONS[mode];
-            icon.style.fontSize = '';
-            icon.removeAttribute('src');
+    const defaultIcon = DEFAULT_MODE_ICONS[mode];
+
+    // 如果默认图标是图片路径，应用默认图片
+    if (defaultIcon && defaultIcon.includes('.png')) {
+        applyModeIcon(mode, defaultIcon);
+    } else {
+        // 如果是 emoji 或其他文本，恢复为文本
+        const btn = document.querySelector(`[onclick="selectMode('${mode}')"]`);
+        if (btn) {
+            const icon = btn.querySelector('.mode-icon');
+            if (icon) {
+                icon.textContent = defaultIcon;
+                icon.style.fontSize = '';
+                icon.removeAttribute('src');
+            }
         }
     }
 }

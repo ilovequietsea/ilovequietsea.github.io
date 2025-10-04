@@ -1,7 +1,3 @@
-// ==================== 全局变量 ====================
-let currentBgImage = null;
-let currentPage = 'mode';
-
 // ==================== 页面初始化 ====================
 document.addEventListener('DOMContentLoaded', function() {
     loadSettingsFromURL();
@@ -10,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initBgImageUpload();
     initOpacitySlider();
     initModeIconUpload();
+    initDefaultModeIcons();
     loadSettings();
 });
 

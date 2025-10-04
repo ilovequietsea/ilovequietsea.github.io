@@ -9,9 +9,9 @@ const BG_PRESETS = {
 };
 
 const DEFAULT_MODE_ICONS = {
-    single: '📷',
-    batch: '🖼️',
-    text: '📝'
+    single: 'assets/beijing (1).png',
+    batch: 'assets/beijing (2).png',
+    text: 'assets/beijing (3).png'
 };
 
 // 默认配置（直接写死，不使用 localStorage）
@@ -32,6 +32,10 @@ const DEFAULT_SETTINGS = {
 
 // 当前运行时配置（内存中）
 let currentSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+
+// 全局状态变量
+let currentBgImage = null;
+let currentPage = 'mode';
 
 // ==================== 通用工具函数 ====================
 function calculateScale(imgWidth, imgHeight, targetWidth, targetHeight, mode) {
