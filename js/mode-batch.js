@@ -224,9 +224,9 @@ let batchCurrentPage = 1;
 let batchPreviewCounter = 0;
 let batchPreviews = [];
 
-const batchTargetWidthInput = document.getElementById('batchTargetWidth');
-const batchTargetHeightInput = document.getElementById('batchTargetHeight');
-const batchScaleModeSelect = document.getElementById('batchScaleMode');
+const batchTargetSizeInput = document.getElementById('batchTargetSize');
+const batchCropWidthInput = document.getElementById('batchCropWidth');
+const batchCropHeightInput = document.getElementById('batchCropHeight');
 const displayCountSelect = document.getElementById('displayCount');
 const layoutModeSelect = document.getElementById('layoutMode');
 const batchCanvasGrid = document.getElementById('batchCanvasGrid');
@@ -350,9 +350,14 @@ document.addEventListener('mouseup', function() {
     }
 });
 
-batchTargetWidthInput.addEventListener('change', updateAllBatchImages);
-batchTargetHeightInput.addEventListener('change', updateAllBatchImages);
-batchScaleModeSelect.addEventListener('change', updateAllBatchImages);
+batchTargetSizeInput.addEventListener('change', () => {
+    // 当目标尺寸改变时，同步更新裁剪框尺寸为正方形
+    batchCropWidthInput.value = batchTargetSizeInput.value;
+    batchCropHeightInput.value = batchTargetSizeInput.value;
+    updateAllBatchImages();
+});
+batchCropWidthInput.addEventListener('change', updateAllBatchImages);
+batchCropHeightInput.addEventListener('change', updateAllBatchImages);
 displayCountSelect.addEventListener('change', () => {
     batchCurrentPage = 1;
     renderBatchPage();
@@ -380,12 +385,14 @@ function initBatchEdit() {
 }
 
 function updateAllBatchImages() {
-    const targetWidth = parseInt(batchTargetWidthInput.value);
-    const targetHeight = parseInt(batchTargetHeightInput.value);
-    const scaleMode = batchScaleModeSelect.value;
+    const targetSize = parseInt(batchTargetSizeInput.value);
+    const cropW = parseInt(batchCropWidthInput.value);
+    const cropH = parseInt(batchCropHeightInput.value);
 
     batchImageData.forEach(data => {
-        const scale = calculateScale(data.image.width, data.image.height, targetWidth, targetHeight, scaleMode);
+        // 基于短边缩放
+        const shortEdge = Math.min(data.image.width, data.image.height);
+        const scale = targetSize / shortEdge;
         const scaledWidth = Math.round(data.image.width * scale);
         const scaledHeight = Math.round(data.image.height * scale);
 
@@ -396,12 +403,12 @@ function updateAllBatchImages() {
         ctx.drawImage(data.image, 0, 0, scaledWidth, scaledHeight);
 
         // 默认居中裁剪，但确保不超出边界
-        let cropX = Math.max(0, Math.floor((scaledWidth - targetWidth) / 2));
-        let cropY = Math.max(0, Math.floor((scaledHeight - targetHeight) / 2));
+        let cropX = Math.max(0, Math.floor((scaledWidth - cropW) / 2));
+        let cropY = Math.max(0, Math.floor((scaledHeight - cropH) / 2));
 
         // 确保裁剪区域不超出图片边界
-        cropX = Math.min(cropX, Math.max(0, scaledWidth - targetWidth));
-        cropY = Math.min(cropY, Math.max(0, scaledHeight - targetHeight));
+        cropX = Math.min(cropX, Math.max(0, scaledWidth - cropW));
+        cropY = Math.min(cropY, Math.max(0, scaledHeight - cropH));
 
         data.cropPosition = { x: cropX, y: cropY };
     });
@@ -512,12 +519,12 @@ function createBatchCanvasItem(data, index) {
     const cropBox = document.createElement('div');
     cropBox.className = 'crop-box';
 
-    const targetWidth = parseInt(batchTargetWidthInput.value);
-    const targetHeight = parseInt(batchTargetHeightInput.value);
+    const cropW = parseInt(batchCropWidthInput.value);
+    const cropH = parseInt(batchCropHeightInput.value);
 
     // 计算裁剪框在显示区域中的尺寸，确保不超过图片显示区域
-    let cropDisplayWidth = Math.min(targetWidth * displayScale, displayWidth);
-    let cropDisplayHeight = Math.min(targetHeight * displayScale, displayHeight);
+    let cropDisplayWidth = Math.min(cropW * displayScale, displayWidth);
+    let cropDisplayHeight = Math.min(cropH * displayScale, displayHeight);
 
     // 使用 Math.floor 避免浮点数导致超出边界
     cropDisplayWidth = Math.floor(cropDisplayWidth);
@@ -542,7 +549,7 @@ function createBatchCanvasItem(data, index) {
 
     const label = document.createElement('div');
     label.className = 'crop-info-label';
-    label.textContent = `${targetWidth} × ${targetHeight}`;
+    label.textContent = `${cropW} × ${cropH}`;
     cropBox.appendChild(label);
 
     // 更新遮罩函数
@@ -710,23 +717,23 @@ function batchProcessSelected() {
         return;
     }
 
-    const targetWidth = parseInt(batchTargetWidthInput.value);
-    const targetHeight = parseInt(batchTargetHeightInput.value);
+    const cropW = parseInt(batchCropWidthInput.value);
+    const cropH = parseInt(batchCropHeightInput.value);
 
     selected.forEach(data => {
         const croppedCanvas = document.createElement('canvas');
-        croppedCanvas.width = targetWidth;
-        croppedCanvas.height = targetHeight;
+        croppedCanvas.width = cropW;
+        croppedCanvas.height = cropH;
         const ctx = croppedCanvas.getContext('2d');
 
         // 计算实际可裁剪的区域，确保不超出图片边界
-        const actualCropWidth = Math.min(targetWidth, data.scaledCanvas.width - data.cropPosition.x);
-        const actualCropHeight = Math.min(targetHeight, data.scaledCanvas.height - data.cropPosition.y);
+        const actualCropWidth = Math.min(cropW, data.scaledCanvas.width - data.cropPosition.x);
+        const actualCropHeight = Math.min(cropH, data.scaledCanvas.height - data.cropPosition.y);
 
         // 如果裁剪区域小于目标尺寸，填充白色背景
-        if (actualCropWidth < targetWidth || actualCropHeight < targetHeight) {
+        if (actualCropWidth < cropW || actualCropHeight < cropH) {
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, targetWidth, targetHeight);
+            ctx.fillRect(0, 0, cropW, cropH);
         }
 
         // 执行裁剪
@@ -736,7 +743,7 @@ function batchProcessSelected() {
             0, 0, actualCropWidth, actualCropHeight
         );
 
-        addBatchPreview(croppedCanvas, targetWidth, targetHeight, data.name);
+        addBatchPreview(croppedCanvas, cropW, cropH, data.name);
     });
 }
 
@@ -916,17 +923,17 @@ function applyUniformCrop() {
     if (batchImageData.length === 0) return;
 
     const firstCrop = batchImageData[0].cropPosition;
-    const targetWidth = parseInt(batchTargetWidthInput.value);
-    const targetHeight = parseInt(batchTargetHeightInput.value);
+    const cropW = parseInt(batchCropWidthInput.value);
+    const cropH = parseInt(batchCropHeightInput.value);
 
     batchImageData.forEach(data => {
         // 使用第一张图的裁剪位置比例
         const firstCanvas = batchImageData[0].scaledCanvas;
-        const cropXRatio = firstCrop.x / (firstCanvas.width - targetWidth);
-        const cropYRatio = firstCrop.y / (firstCanvas.height - targetHeight);
+        const cropXRatio = firstCrop.x / (firstCanvas.width - cropW);
+        const cropYRatio = firstCrop.y / (firstCanvas.height - cropH);
 
-        const maxX = Math.max(0, data.scaledCanvas.width - targetWidth);
-        const maxY = Math.max(0, data.scaledCanvas.height - targetHeight);
+        const maxX = Math.max(0, data.scaledCanvas.width - cropW);
+        const maxY = Math.max(0, data.scaledCanvas.height - cropH);
 
         data.cropPosition.x = Math.round(cropXRatio * maxX);
         data.cropPosition.y = Math.round(cropYRatio * maxY);

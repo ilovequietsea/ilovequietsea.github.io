@@ -172,21 +172,17 @@
 
         <div class="settings-section">
             <div class="setting-group">
-                <label>目标宽度：</label>
-                <input type="number" id="targetWidth" value="1024" min="1">
+                <label>目标尺寸（短边）：</label>
+                <input type="number" id="targetSize" value="1024" min="1">
+                <span class="setting-hint">图片短边将缩放到此尺寸，长边按比例缩放</span>
             </div>
             <div class="setting-group">
-                <label>目标高度：</label>
-                <input type="number" id="targetHeight" value="1024" min="1">
+                <label>裁剪框宽度：</label>
+                <input type="number" id="cropWidth" value="1024" min="1">
             </div>
             <div class="setting-group">
-                <label>缩放模式：</label>
-                <select id="scaleMode">
-                    <option value="short">基于短边缩放</option>
-                    <option value="long">基于长边缩放</option>
-                    <option value="width">基于宽度缩放</option>
-                    <option value="height">基于高度缩放</option>
-                </select>
+                <label>裁剪框高度：</label>
+                <input type="number" id="cropHeight" value="1024" min="1">
             </div>
         </div>
 
@@ -215,6 +211,8 @@
                     <button id="processBtn" class="btn" disabled>生成预览</button>
                 </div>
             </div>
+
+            <div class="resizer" id="singleResizer"></div>
 
             <div class="right-section">
                 <h3>裁剪预览</h3>
@@ -274,21 +272,17 @@
 
         <div class="settings-section">
             <div class="setting-group">
-                <label>目标宽度：</label>
-                <input type="number" id="batchTargetWidth" value="1024" min="1">
+                <label>目标尺寸（短边）：</label>
+                <input type="number" id="batchTargetSize" value="1024" min="1">
+                <span class="setting-hint">图片短边将缩放到此尺寸，长边按比例缩放</span>
             </div>
             <div class="setting-group">
-                <label>目标高度：</label>
-                <input type="number" id="batchTargetHeight" value="1024" min="1">
+                <label>裁剪框宽度：</label>
+                <input type="number" id="batchCropWidth" value="1024" min="1">
             </div>
             <div class="setting-group">
-                <label>缩放模式：</label>
-                <select id="batchScaleMode">
-                    <option value="short">基于短边缩放</option>
-                    <option value="long">基于长边缩放</option>
-                    <option value="width">基于宽度缩放</option>
-                    <option value="height">基于高度缩放</option>
-                </select>
+                <label>裁剪框高度：</label>
+                <input type="number" id="batchCropHeight" value="1024" min="1">
             </div>
             <div class="setting-group">
                 <label>显示数量：</label>

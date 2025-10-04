@@ -64,12 +64,27 @@ function initPageSelector() {
 }
 
 function openSettings() {
-    document.getElementById('settingsPanel').classList.add('active');
+    const settingsPanel = document.getElementById('settingsPanel');
+    settingsPanel.classList.add('active');
     updateSettingsPanelUI(currentSettings[currentPage] || currentSettings.all || currentSettings);
+
+    // 延迟添加点击监听，避免立即触发
+    setTimeout(() => {
+        settingsPanel.addEventListener('click', handleSettingsPanelClick);
+    }, 100);
 }
 
 function closeSettings() {
-    document.getElementById('settingsPanel').classList.remove('active');
+    const settingsPanel = document.getElementById('settingsPanel');
+    settingsPanel.classList.remove('active');
+    settingsPanel.removeEventListener('click', handleSettingsPanelClick);
+}
+
+function handleSettingsPanelClick(e) {
+    // 只有点击到背景层（settingsPanel）时才关闭，点击内容区域不关闭
+    if (e.target.id === 'settingsPanel') {
+        closeSettings();
+    }
 }
 
 // 更新设置面板 UI

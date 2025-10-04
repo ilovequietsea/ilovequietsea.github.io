@@ -18,9 +18,9 @@ const overlayTop = document.getElementById('overlayTop');
 const overlayBottom = document.getElementById('overlayBottom');
 const overlayLeft = document.getElementById('overlayLeft');
 const overlayRight = document.getElementById('overlayRight');
-const targetWidthInput = document.getElementById('targetWidth');
-const targetHeightInput = document.getElementById('targetHeight');
-const scaleModeSelect = document.getElementById('scaleMode');
+const targetSizeInput = document.getElementById('targetSize');
+const cropWidthInput = document.getElementById('cropWidth');
+const cropHeightInput = document.getElementById('cropHeight');
 const processBtn = document.getElementById('processBtn');
 const originalSizeP = document.getElementById('originalSize');
 const scaledSizeP = document.getElementById('scaledSize');
@@ -28,6 +28,7 @@ const cropInfoP = document.getElementById('cropInfo');
 const previewList = document.getElementById('previewList');
 const selectAllBtn = document.getElementById('selectAllBtn');
 const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+const singleResizer = document.getElementById('singleResizer');
 
 // 事件监听 - 单张模式
 imageInput.addEventListener('change', handleSingleImageUpload);
@@ -38,14 +39,52 @@ cropBox.addEventListener('mousedown', startSingleDrag);
 document.addEventListener('mousemove', singleDrag);
 document.addEventListener('mouseup', endSingleDrag);
 
-targetWidthInput.addEventListener('change', () => {
+targetSizeInput.addEventListener('change', () => {
+    if (singleImage) {
+        // 当目标尺寸改变时，同步更新裁剪框尺寸为正方形
+        cropWidthInput.value = targetSizeInput.value;
+        cropHeightInput.value = targetSizeInput.value;
+        scaleAndDisplaySingleImage();
+    }
+});
+cropWidthInput.addEventListener('change', () => {
     if (singleImage) scaleAndDisplaySingleImage();
 });
-targetHeightInput.addEventListener('change', () => {
+cropHeightInput.addEventListener('change', () => {
     if (singleImage) scaleAndDisplaySingleImage();
 });
-scaleModeSelect.addEventListener('change', () => {
-    if (singleImage) scaleAndDisplaySingleImage();
+
+// 单张模式分隔条拖动
+let isSingleResizing = false;
+let singleStartX = 0;
+let singleStartWidth = 0;
+
+singleResizer.addEventListener('mousedown', function(e) {
+    isSingleResizing = true;
+    singleStartX = e.clientX;
+    const rightSection = document.querySelector('#singleMode .right-section');
+    singleStartWidth = rightSection.offsetWidth;
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault();
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (!isSingleResizing) return;
+
+    const rightSection = document.querySelector('#singleMode .right-section');
+    const delta = singleStartX - e.clientX;
+    const newWidth = singleStartWidth + delta;
+
+    if (newWidth >= 250 && newWidth <= 600) {
+        rightSection.style.width = newWidth + 'px';
+    }
+});
+
+document.addEventListener('mouseup', function() {
+    if (isSingleResizing) {
+        isSingleResizing = false;
+        document.body.style.cursor = '';
+    }
 });
 
 function handleSingleImageUpload(e) {
@@ -68,11 +107,13 @@ function handleSingleImageUpload(e) {
 function scaleAndDisplaySingleImage() {
     if (!singleImage) return;
 
-    const targetWidth = parseInt(targetWidthInput.value);
-    const targetHeight = parseInt(targetHeightInput.value);
-    const scaleMode = scaleModeSelect.value;
+    const targetSize = parseInt(targetSizeInput.value);
+    const cropW = parseInt(cropWidthInput.value);
+    const cropH = parseInt(cropHeightInput.value);
 
-    const scale = calculateScale(singleImage.width, singleImage.height, targetWidth, targetHeight, scaleMode);
+    // 基于短边缩放
+    const shortEdge = Math.min(singleImage.width, singleImage.height);
+    const scale = targetSize / shortEdge;
     const scaledWidth = Math.round(singleImage.width * scale);
     const scaledHeight = Math.round(singleImage.height * scale);
 
@@ -82,8 +123,28 @@ function scaleAndDisplaySingleImage() {
     const scaledCtx = singleScaledCanvas.getContext('2d');
     scaledCtx.drawImage(singleImage, 0, 0, scaledWidth, scaledHeight);
 
-    const maxDisplayWidth = 900;
-    const maxDisplayHeight = 700;
+    // 动态获取左侧区域的可用空间
+    const leftSection = document.querySelector('#singleMode .left-section');
+    const canvasWrapper = document.querySelector('#singleMode .canvas-wrapper');
+
+    // 确保容器没有内联样式干扰
+    if (canvasWrapper) {
+        canvasWrapper.style.width = '';
+        canvasWrapper.style.height = '';
+    }
+
+    // 强制重新计算布局
+    if (leftSection) {
+        leftSection.offsetHeight; // 触发重排
+    }
+
+    // 计算可用空间：左侧区域宽度 - 一些边距
+    const availableWidth = leftSection ? leftSection.clientWidth - 50 : 900;
+    const availableHeight = window.innerHeight - 350; // 减去顶部栏、设置区、信息区等
+
+    const maxDisplayWidth = Math.min(availableWidth, 1200);
+    const maxDisplayHeight = Math.min(availableHeight, 800);
+
     let displayWidth = scaledWidth;
     let displayHeight = scaledHeight;
     let displayScale = 1;
@@ -96,19 +157,24 @@ function scaleAndDisplaySingleImage() {
 
     canvas.width = displayWidth;
     canvas.height = displayHeight;
+
+    // 清除之前的内容
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(singleScaledCanvas, 0, 0, displayWidth, displayHeight);
 
-    showSingleCropBox(displayWidth, displayHeight, targetWidth, targetHeight, displayScale);
+    showSingleCropBox(displayWidth, displayHeight, cropW, cropH, displayScale);
 
     originalSizeP.textContent = `原始尺寸: ${singleImage.width} × ${singleImage.height}`;
     scaledSizeP.textContent = `缩放后尺寸: ${scaledWidth} × ${scaledHeight}`;
     updateSingleCropInfo();
 }
 
-function showSingleCropBox(displayWidth, displayHeight, targetWidth, targetHeight, displayScale) {
-    const cropDisplayWidth = Math.min(targetWidth * displayScale, displayWidth);
-    const cropDisplayHeight = Math.min(targetHeight * displayScale, displayHeight);
+function showSingleCropBox(displayWidth, displayHeight, cropWidth, cropHeight, displayScale) {
+    // 裁剪框显示尺寸（限制在图片范围内）
+    const cropDisplayWidth = Math.min(cropWidth * displayScale, displayWidth);
+    const cropDisplayHeight = Math.min(cropHeight * displayScale, displayHeight);
 
+    // 居中显示裁剪框
     singleCropPosition.x = Math.max(0, (displayWidth - cropDisplayWidth) / 2);
     singleCropPosition.y = Math.max(0, (displayHeight - cropDisplayHeight) / 2);
 
@@ -118,7 +184,7 @@ function showSingleCropBox(displayWidth, displayHeight, targetWidth, targetHeigh
     cropBox.style.height = cropDisplayHeight + 'px';
     cropBox.style.display = 'block';
 
-    cropLabel.textContent = `${targetWidth} × ${targetHeight}`;
+    cropLabel.textContent = `${cropWidth} × ${cropHeight}`;
 
     updateSingleOverlay();
 }
@@ -170,25 +236,34 @@ function updateSingleCropInfo() {
 
 function startSingleDrag(e) {
     singleIsDragging = true;
-    singleDragStart.x = e.clientX - singleCropPosition.x;
-    singleDragStart.y = e.clientY - singleCropPosition.y;
+    // 获取裁剪框当前位置（相对于视口）
+    const cropBoxRect = cropBox.getBoundingClientRect();
+    // 记录鼠标在裁剪框内的相对位置
+    singleDragStart.x = e.clientX - cropBoxRect.left;
+    singleDragStart.y = e.clientY - cropBoxRect.top;
     cropBox.style.cursor = 'grabbing';
     e.preventDefault();
+    e.stopPropagation();
 }
 
 function singleDrag(e) {
     if (!singleIsDragging) return;
 
+    // 获取 canvas 容器的位置
     const containerRect = canvasContainer.getBoundingClientRect();
+
+    // 计算裁剪框新位置（相对于容器）
     let newX = e.clientX - singleDragStart.x - containerRect.left;
     let newY = e.clientY - singleDragStart.y - containerRect.top;
 
+    // 限制在 canvas 范围内
     const maxX = canvas.width - parseFloat(cropBox.style.width);
     const maxY = canvas.height - parseFloat(cropBox.style.height);
 
     newX = Math.max(0, Math.min(newX, maxX));
     newY = Math.max(0, Math.min(newY, maxY));
 
+    // 更新位置
     singleCropPosition.x = newX;
     singleCropPosition.y = newY;
 
@@ -209,24 +284,34 @@ function endSingleDrag() {
 function processSingleImage() {
     if (!singleScaledCanvas) return;
 
-    const targetWidth = parseInt(targetWidthInput.value);
-    const targetHeight = parseInt(targetHeightInput.value);
+    const cropW = parseInt(cropWidthInput.value);
+    const cropH = parseInt(cropHeightInput.value);
     const displayScale = canvas.width / singleScaledCanvas.width;
     const cropX = Math.round(singleCropPosition.x / displayScale);
     const cropY = Math.round(singleCropPosition.y / displayScale);
 
+    // 计算实际可裁剪的区域（限制在缩放后图片范围内）
+    const actualCropWidth = Math.min(cropW, singleScaledCanvas.width - cropX);
+    const actualCropHeight = Math.min(cropH, singleScaledCanvas.height - cropY);
+
     const croppedCanvas = document.createElement('canvas');
-    croppedCanvas.width = targetWidth;
-    croppedCanvas.height = targetHeight;
+    croppedCanvas.width = cropW;
+    croppedCanvas.height = cropH;
     const croppedCtx = croppedCanvas.getContext('2d');
+
+    // 如果裁剪区域小于目标尺寸，填充白色背景
+    if (actualCropWidth < cropW || actualCropHeight < cropH) {
+        croppedCtx.fillStyle = '#FFFFFF';
+        croppedCtx.fillRect(0, 0, cropW, cropH);
+    }
 
     croppedCtx.drawImage(
         singleScaledCanvas,
-        cropX, cropY, targetWidth, targetHeight,
-        0, 0, targetWidth, targetHeight
+        cropX, cropY, actualCropWidth, actualCropHeight,
+        0, 0, actualCropWidth, actualCropHeight
     );
 
-    addSinglePreview(croppedCanvas, targetWidth, targetHeight, cropX, cropY);
+    addSinglePreview(croppedCanvas, cropW, cropH, cropX, cropY);
 }
 
 function addSinglePreview(canvas, width, height, x, y) {
