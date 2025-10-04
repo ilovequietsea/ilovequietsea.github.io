@@ -14,10 +14,24 @@ const DEFAULT_MODE_ICONS = {
     text: '📝'
 };
 
-const BUILTIN_DEFAULT_SETTINGS = {
-    appSettings: {},
-    modeIcons: {}
+// 默认配置（直接写死，不使用 localStorage）
+const DEFAULT_SETTINGS = {
+    bgType: "image",
+    bgValue: null,
+    bgImage: "assets/default-bg.png",
+    opacity: "85",
+    all: {
+        bgType: "image",
+        bgValue: null,
+        bgImage: "assets/default-bg.png",
+        opacity: "70",
+        fontFamily: "'SimSun', serif",
+        textColor: "#333333"
+    }
 };
+
+// 当前运行时配置（内存中）
+let currentSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 
 // ==================== 通用工具函数 ====================
 function calculateScale(imgWidth, imgHeight, targetWidth, targetHeight, mode) {

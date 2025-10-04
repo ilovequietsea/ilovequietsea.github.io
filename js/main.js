@@ -4,7 +4,6 @@ let currentPage = 'mode';
 
 // ==================== 页面初始化 ====================
 document.addEventListener('DOMContentLoaded', function() {
-    applyBuiltinDefaultsIfNeeded();
     loadSettingsFromURL();
     initPageSelector();
     initPresetButtons();
